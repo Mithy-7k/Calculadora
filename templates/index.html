@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Inteligente</title>
+    <style>
+        /* Variáveis de Cores para Controle de Tema */
+        :root {
+            --bg-body: #f0f2f5;
+            --bg-app: #ffffff;
+            --text-main: #1c1e21;
+            --text-sub: #65676b;
+            --bg-tabs: #e4e6eb;
+            --bg-input: #ffffff;
+            --border: #ced4da;
+            --result-box: #e7f3ff;
+            --result-border: #007bff;
+            --result-text: #004085;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #121212;
+            --bg-app: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sub: #a0a0a0;
+            --bg-tabs: #2d2d2d;
+            --bg-input: #2a2a2a;
+            --border: #444444;
+            --result-box: #1a233a;
+            --result-border: #007bff;
+            --result-text: #90caf9;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
+        body { background: var(--bg-body); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        
+        .app-container { background: var(--bg-app); width: 100%; max-width: 450px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden; position: relative; }
+        
+        /* Barra de topo com utilitários */
+        .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: var(--bg-tabs); border-bottom: 1px solid var(--border); }
+        .top-bar span { font-size: 12px; font-weight: bold; color: var(--text-sub); }
+        .toggle-btn { background: none; border: 1px solid var(--border); color: var(--text-main); padding: 5px 10px; border-radius: 20px; cursor: pointer; font-size: 12px; }
+
+        .tabs { display: flex; background: var(--bg-tabs); }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; cursor: pointer; font-size: 16px; font-weight: 600; color: var(--text-sub); }
+        .tab-btn.active { background: var(--bg-app); color: #007bff; border-bottom: 3px solid #007bff; }
+        
+        .content { padding: 25px; display: none; }
+        .content.active { display: block; }
+        
+        h2 { margin-bottom: 15px; color: var(--text-main); font-size: 20px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; background: var(--bg-input); color: var(--text-main); }
+        
+        .mode-toggle-area { margin-bottom: 15px; text-align: right; }
+        .text-link { color: #007bff; cursor: pointer; font-size: 14px; text-decoration: underline; background: none; border: none; }
+
+        button.action-btn { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button.action-btn:hover { background: #0056b3; }
+        
+        .result-box { margin-top: 20px; padding: 15px; background: var(--result-box); border-left: 5px solid var(--result-border); border-radius: 4px; color: var(--result-text); }
+        
+        /* Estilização da Área da IA (Vicky) */
+        .identity-container { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
+        
+        /* ESPAÇO RESERVADO PARA O AVATAR DA VICKY */
+        .vicky-avatar { width: 70px; height: 70px; border-radius: 50%; background: #28a745; display: flex; justify-content: center; align-items: center; color: white; font-size: 28px; font-weight: bold; margin-bottom: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        /* Dica: Quando tiver uma imagem, substitua o conteúdo acima por: background-image: url('/static/vicky.png'); background-size: cover; */
+
+        .vicky-welcome { font-size: 14px; color: var(--text-sub); font-style: italic; line-height: 1.4; }
+        .ai-box { background: var(--bg-tabs); border-left: 5px solid #28a745; color: var(--text-main); line-height: 1.6; max-height: 250px; overflow-y: auto; }
+    </style>
+</head>
+<body data-theme="{{ tema or 'dark' }}">
+
+<div class="app-container">
+    <div class="top-bar">
+        <button class="toggle-btn" onclick="toggleTheme()">🌓 Alternar Tema</button>
+        <span id="keyboard-indicator">⌨️ Teclado Ativo</span>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('comum')">Calculadora</button>
+        <button class="tab-btn" onclick="switchTab('ia')">Aba IA (Vicky)</button>
+    </div>
+
+    <div id="comum" class="content active">
+        <div class="images-container" style="display:none;">
+                    </div>
+        <div class="mode-toggle-area">
+            <button class="text-link" type="button" onclick="toggleMode()" id="mode-btn">
+                {% if modo == 'avancado' %}◀ Mudar para Modo Simples{% else %}🔬 Mudar para Modo Avançado{% endif %}
+            </button>
+        </div>
+
+        <form action="/calcular" method="POST" id="calc-form">
+            <input type="hidden" name="tema_salvo" id="tema_salvo" value="{{ tema or 'dark' }}">
+            <input type="hidden" name="modo_salvo" id="modo_salvo" value="{{ modo or 'simples' }}">
+
+            <input type="number" step="any" name="num1" id="num1" placeholder="Primeiro número" value="{{ num1 or '' }}" required>
+            
+            <select name="operacao" id="operacao">
+                <option value="soma" {% if op == 'soma' %}selected{% endif %}>+ Somar</option>
+                <option value="sub" {% if op == 'sub' %}selected{% endif %}>- Subtrair</option>
+                <option value="mult" {% if op == 'mult' %}selected{% endif %}>× Multiplicar</option>
+                <option value="div" {% if op == 'div' %}selected{% endif %}>÷ Dividir</option>
+                <option value="pot" id="opt-pot" style="display: {% if modo == 'avancado' %}block{% else %}none{% endif %};" {% if op == 'pot' %}selected{% endif %}>xʸ Potência</option>
+            </select>
+            
+            <input type="number" step="any" name="num2" id="num2" placeholder="Segundo número" value="{{ num2 or '' }}" required>
+            <button type="submit" class="action-btn">Calcular</button>
+        </form>
+
+        {% if resultado_comum is not none %}
+            <div class="result-box">
+                <strong>Resultado:</strong> {{ resultado_comum }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div id="ia" class="content">
+        <div class="identity-container">
+            <div class="vicky-avatar">V</div> <h2>Vicky</h2>
+            <p class="vicky-welcome">"Olá! Sou a Vicky, sua inteligência artificial matemática. Estou aqui para auxiliá-lo a decifrar fórmulas, resolver problemas complexos ou te explicar teorias. O que vamos calcular hoje?"</p>
+        </div>
+
+        <form action="/perguntar_ia" method="POST">
+            <input type="hidden" name="tema_salvo" id="tema_salvo_ia" value="{{ tema or 'dark' }}">
+            <input type="hidden" name="modo_salvo" id="modo_salvo_ia" value="{{ modo or 'simples' }}">
+            
+            <input type="text" name="pergunta" placeholder="Digite seu problema por extenso..." value="{{ pergunta or '' }}" required>
+            <button type="submit" class="action-btn" style="background: #28a745;">Perguntar para Vicky</button>
+        </form>
+
+        {% if resposta_ia %}
+            <div class="result-box ai-box">
+                <strong>Vicky:</strong><br><br>
+                <p style="white-space: pre-line;">{{ resposta_ia }}</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Gerenciador de Abas
+    function switchTab(tabName) {
+        document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        
+        document.getElementById(tabName).classList.add('active');
+        event.currentTarget.classList.add('active');
+        localStorage.setItem('activeTab', tabName);
+    }
+
+    // Alternador de Temas (Claro / Escuro)
+    function toggleTheme() {
+        const body = document.body;
+        const currentTheme = body.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        body.setAttribute('data-theme', newTheme);
+        document.getElementById('tema_salvo').value = newTheme;
+        document.getElementById('tema_salvo_ia').value = newTheme;
+        localStorage.setItem('theme', newTheme);
+    }
+
+    // Alternador de Modo da Calculadora (Simples / Avançado)
+    function toggleMode() {
+        const modoInput = document.getElementById('modo_salvo');
+        const modoInputIa = document.getElementById('modo_salvo_ia');
+        const optPot = document.getElementById('opt-pot');
+        const btn = document.getElementById('mode-btn');
+
+        if (modoInput.value === 'simples') {
+            modoInput.value = 'avancado';
+            modoInputIa.value = 'avancado';
+            optPot.style.display = 'block';
+            btn.innerText = '◀ Mudar para Modo Simples';
+        } else {
+            modoInput.value = 'simples';
+            modoInputIa.value = 'simples';
+            optPot.style.display = 'none';
+            if(document.getElementById('operacao').value === 'pot') {
+                document.getElementById('operacao').value = 'soma';
+            }
+            btn.innerText = '🔬 Mudar para Modo Avançado';
+        }
+    }
+
+    // CAPTURA E GERENCIAMENTO DO TECLADO FÍSICO
+    // Filtra para aceitar apenas interações de números e símbolos operacionais na calculadora
+    document.addEventListener('keydown', function(event) {
+        // Ignora se o usuário estiver digitando na caixa de texto da IA
+        if (document.activeElement.name === 'pergunta') return;
+
+        const key = event.key;
+        const num1 = document.getElementById('num1');
+        const num2 = document.getElementById('num2');
+        const operacao = document.getElementById('operacao');
+
+        // Mapeia símbolos aritméticos digitados para o SELECT do HTML
+        const mapaOperacoes = {
+            '+': 'soma',
+            '-': 'sub',
+            '*': 'mult',
+            'x': 'mult',
+            '/': 'div'
+        };
+
+        if (mapaOperacoes[key]) {
+            event.preventDefault();
+            operacao.value = mapaOperacoes[key];
+            num2.focus(); // Passa o foco automaticamente para o segundo número
+        } else if (key === 'Enter') {
+            event.preventDefault();
+            document.getElementById('calc-form').submit();
+        }
+    });
+
+    // Mantém as configurações consistentes ao carregar a página
+    window.onload = function() {
+        let activeTab = "{{ aba_ativa or 'comum' }}";
+        if(activeTab === 'ia') {
+            switchTab('ia');
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.querySelectorAll('.tab-btn')[0].classList.remove('active');
+        }
+
+        // Aplica o tema vindo do back-end
+        const temaBackend = "{{ tema or 'dark' }}";
+        document.body.setAttribute('data-theme', temaBackend);
+    }
+</script>
+</body>
+</html>
