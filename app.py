@@ -11,7 +11,7 @@ client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 def index():
     # Inicializa a página com o tema escuro por padrão e na aba comum
     return render_template('index.html', aba_ativa='comum', tema='dark')
-
+    
 # Rota para a Calculadora Tradicional e Avançada
 @app.route('/calcular', methods=['POST'])
 def calcular():
@@ -23,13 +23,21 @@ def calcular():
         num2 = float(request.form.get('num2'))
         operacao = request.form.get('operacao')
         
-        # Operações Básicas e Avançadas tratadas no Python
+        # Operações Básicas e Avançadas
         if operacao == 'soma': res = num1 + num2
         elif operacao == 'sub': res = num1 - num2
-        elif operacao == 'mult': res = num1 * num2
+        elif operacao == 'mult': res = num1 * mult
         elif operacao == 'div': res = num1 / num2 if num2 != 0 else "Erro (Divisão por Zero)"
         elif operacao == 'pot': res = num1 ** num2
         else: res = "Operação Inválida"
+            
+        # Se o resultado for um número, checamos se ele equivale a um inteiro
+        if isinstance(res, (int, float)):
+            if res.is_integer():
+                res = int(res) # Transforma 2187.0 em 2187
+                
+        if num1.is_integer(): num1 = int(num1) # Transforma 3.0 em 3
+        if num2.is_integer(): num2 = int(num2) # Transforma 7.0 em 7
             
         return render_template('index.html', resultado_comum=res, num1=num1, num2=num2, op=operacao, aba_ativa='comum', tema=tema_atual, modo=modo_calculadora)
     except Exception:
