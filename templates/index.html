@@ -69,6 +69,13 @@
 
         .vicky-welcome { font-size: 14px; color: var(--text-sub); font-style: italic; line-height: 1.4; }
         .ai-box { background: var(--bg-tabs); border-left: 5px solid #28a745; color: var(--text-main); line-height: 1.6; max-height: 250px; overflow-y: auto; }
+       /* Grade do Teclado Numérico Visual */
+        .keyboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px; background: var(--bg-tabs); padding: 15px; border-radius: 12px; }
+        .key-btn { padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 50%; background: var(--bg-app); color: var(--text-main); cursor: pointer; display: flex; justify-content: center; align-items: center; aspect-ratio: 1; transition: transform 0.1s, background 0.2s; }
+        .key-btn:active { transform: scale(0.9); background: var(--border); }
+        .key-btn.operator { background: #e4e6eb; color: #007bff; }
+        [data-theme="dark"] .key-btn.operator { background: #2d2d2d; color: #90caf9; }
+        .key-btn.clear { background: #dc3545; color: white; }
     </style>
 </head>
 <body data-theme="{{ tema or 'dark' }}">
@@ -84,9 +91,62 @@
         <button class="tab-btn" onclick="switchTab('ia')">Aba IA (Vicky)</button>
     </div>
 
-    <div id="comum" class="content active">
-        <div class="images-container" style="display:none;">
-                    </div>
+      <div id="comum" class="content active">
+        <div class="mode-toggle-area">
+            <button class="text-link" type="button" onclick="toggleMode()" id="mode-btn">
+                {% if modo == 'avancado' %}◀ Mudar para Modo Simples{% else %}🔬 Mudar para Modo Avançado{% endif %}
+            </button>
+        </div>
+
+        <form action="/calcular" method="POST" id="calc-form">
+            <input type="hidden" name="tema_salvo" id="tema_salvo" value="{{ tema or 'dark' }}">
+            <input type="hidden" name="modo_salvo" id="modo_salvo" value="{{ modo or 'simples' }}">
+
+            <input type="number" step="any" name="num1" id="num1" placeholder="Primeiro número" value="{{ num1 or '' }}" data-input required>
+            
+            <select name="operacao" id="operacao">
+                <option value="soma" {% if op == 'soma' %}selected{% endif %}>+ Somar</option>
+                <option value="sub" {% if op == 'sub' %}selected{% endif %}>- Subtrair</option>
+                <option value="mult" {% if op == 'mult' %}selected{% endif %}>× Multiplicar</option>
+                <option value="div" {% if op == 'div' %}selected{% endif %}>÷ Dividir</option>
+                <option value="pot" id="opt-pot" style="display: {% if modo == 'avancado' %}block{% else %}none{% endif %};" {% if op == 'pot' %}selected{% endif %}>xʸ Potência</option>
+            </select>
+            
+            <input type="number" step="any" name="num2" id="num2" placeholder="Segundo número" value="{{ num2 or '' }}" data-input required>
+            
+            <div class="keyboard-grid">
+                <button type="button" class="key-btn clear" onclick="clearActiveInput()">C</button>
+                <button type="button" class="key-btn operator" onclick="setOpVisual('pot')" id="btn-pot-vis" style="display: {% if modo == 'avancado' %}flex{% else %}none{% endif %};">xʸ</button>
+                <button type="button" class="key-btn operator" onclick="setOpVisual('div')">÷</button>
+                <button type="button" class="key-btn operator" onclick="setOpVisual('mult')">×</button>
+                
+                <button type="button" class="key-btn" onclick="pressKey('7')">7</button>
+                <button type="button" class="key-btn" onclick="pressKey('8')">8</button>
+                <button type="button" class="key-btn" onclick="pressKey('9')">9</button>
+                <button type="button" class="key-btn operator" onclick="setOpVisual('sub')">-</button>
+                
+                <button type="button" class="key-btn" onclick="pressKey('4')">4</button>
+                <button type="button" class="key-btn" onclick="pressKey('5')">5</button>
+                <button type="button" class="key-btn" onclick="pressKey('6')">6</button>
+                <button type="button" class="key-btn operator" onclick="setOpVisual('soma')">+</button>
+                
+                <button type="button" class="key-btn" onclick="pressKey('1')">1</button>
+                <button type="button" class="key-btn" onclick="pressKey('2')">2</button>
+                <button type="button" class="key-btn" onclick="pressKey('3')">3</button>
+                
+                <button type="submit" class="key-btn" style="background: #28a745; color: white; grid-row: span 2; height: 100%; border-radius: 25px;">=</button>
+                
+                <button type="button" class="key-btn" style="grid-column: span 2; border-radius: 25px;" onclick="pressKey('0')">0</button>
+                <button type="button" class="key-btn" onclick="pressKey('.')">,</button>
+            </div>
+        </form>
+
+        {% if resultado_comum is not none %}
+            <div class="result-box">
+                <strong>Resultado:</strong> {{ resultado_comum }}
+            </div>
+        {% endif %}
+    </div>
         <div class="mode-toggle-area">
             <button class="text-link" type="button" onclick="toggleMode()" id="mode-btn">
                 {% if modo == 'avancado' %}◀ Mudar para Modo Simples{% else %}🔬 Mudar para Modo Avançado{% endif %}
@@ -246,6 +306,50 @@
         // Envia o formulário manualmente já que o comportamento padrão foi interceptado de leve
         return true;
     }
+
+     // Descobre qual dos dois campos de número está selecionado no momento
+    let currentFocusInput = document.getElementById('num1');
+    
+    document.querySelectorAll('[data-input]').forEach(input => {
+        input.addEventListener('focus', () => {
+            currentFocusInput = input;
+        });
+    });
+
+    // Insere o caractere pressionado no campo ativo
+    function pressKey(value) {
+        if (currentFocusInput) {
+            currentFocusInput.value += value;
+            currentFocusInput.dispatchEvent(new Event('input')); // Atualiza o estado interno do input
+        }
+    }
+
+    // Limpa o campo ativo atual (Função do Botão C)
+    function clearActiveInput() {
+        if (currentFocusInput) {
+            currentFocusInput.value = '';
+        }
+    }
+
+    // Altera o Select de operação pelos botões do teclado visual
+    function setOpVisual(opValue) {
+        const selectOp = document.getElementById('operacao');
+        selectOp.value = opValue;
+        // Joga o foco automaticamente para o segundo número para facilitar a digitação continuada
+        document.getElementById('num2').focus(); 
+    }
+
+    // Pequeno ajuste para esconder/mostrar o botão de potência do teclado mobile também
+    const originalToggleMode = toggleMode;
+    toggleMode = function() {
+        originalToggleMode();
+        const modoInput = document.getElementById('modo_salvo').value;
+        const btnPotVis = document.getElementById('btn-pot-vis');
+        if(btnPotVis) {
+            btnPotVis.style.display = modoInput === 'avancado' ? 'flex' : 'none';
+        }
+    }
+
 </script>
 </body>
 </html>
