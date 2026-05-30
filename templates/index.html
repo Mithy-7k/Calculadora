@@ -124,12 +124,12 @@
             <p class="vicky-welcome">"Olá! Sou a Vicky, sua inteligência artificial matemática. Estou aqui para auxiliá-lo a decifrar fórmulas, resolver problemas complexos ou te explicar teorias. O que vamos calcular hoje?"</p>
         </div>
 
-        <form action="/perguntar_ia" method="POST">
+       <form action="/perguntar_ia" method="POST" onsubmit="desativarBotaoIa(this)">
             <input type="hidden" name="tema_salvo" id="tema_salvo_ia" value="{{ tema or 'dark' }}">
             <input type="hidden" name="modo_salvo" id="modo_salvo_ia" value="{{ modo or 'simples' }}">
             
             <input type="text" name="pergunta" placeholder="Digite seu problema por extenso..." value="{{ pergunta or '' }}" required>
-            <button type="submit" class="action-btn" style="background: #28a745;">Perguntar para Vicky</button>
+            <button type="submit" id="btn-vicky" class="action-btn" style="background: #28a745;">Perguntar para Vicky</button>
         </form>
 
         {% if resposta_ia %}
@@ -230,6 +230,24 @@
         const temaBackend = "{{ tema or 'dark' }}";
         document.body.setAttribute('data-theme', temaBackend);
     }
+
+     // Função para trancar o botão e mudar o texto enquanto a Vicky pensa
+    function desativarBotaoIa(formulario) {
+        const botao = document.getElementById('btn-vicky');
+        
+        // Altera o texto e o estilo visual para indicar carregamento
+        botao.innerText = "⏳ Vicky está pensando...";
+        botao.style.background = "#6c757d"; // Muda para cinza neutro
+        botao.style.cursor = "not-allowed"; // Muda o desenho do ponteiro do mouse
+        
+        // Desativa o botão para evitar novos cliques
+        botao.disabled = true;
+        
+        // Envia o formulário manualmente já que o comportamento padrão foi interceptado de leve
+        return true;
+    }
+
+
 </script>
 </body>
 </html>
